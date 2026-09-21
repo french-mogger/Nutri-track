@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NutriTrack</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{--acc:#10b981;--acc2:#059669;}
+  *{box-sizing:border-box}
+  body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f7f8fa}
+  ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:4px}
+  .ring{border-radius:9999px;display:flex;align-items:center;justify-content:center;transition:background .6s}
+  .fade{animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+  .bar-fill{transition:width .5s ease}
+  input,select{outline:none}
+  .modal-bg{background:rgba(15,23,42,.45)}
+</style>
+</head>
+<body class="min-h-screen text-slate-800">
+<div id="app"></div>
+
+<script>
+/* ====================================================================
+   CONFIGURE THESE TWO LINES — see README.md for where to find them
+   (Supabase Dashboard > Project Settings > API)
+   ==================================================================== */
+const SUPABASE_URL = "https://rmmckgsdtavkvumqcmnl.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtbWNrZ3NkdGF2a3Z1bXFjbW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5Njk0NzQsImV4cCI6MjEwNTU0NTQ3NH0.m9xVoJuQJXPK2_krB8oxN6Uq_WSKpFbZNwVYBZl0r08";
+/* ==================================================================== */
+
+const CONFIGURED = !SUPABASE_URL.includes('YOUR_PROJECT') && !SUPABASE_ANON_KEY.includes('YOUR_ANON');
+const sb = CONFIGURED && window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+/* ---------- i18n ---------- */
+const I18N = {
+en:{appName:"NutriTrack",tagline:"Eat smart, feel great",login:"Log in",signup:"Sign up",email:"Email",password:"Password",name:"Full name",noAccount:"No account?",haveAccount:"Already have an account?",createAccount:"Create account",welcomeBack:"Welcome back",joinUs:"Create your account",logout:"Log out",checkEmail:"Check your inbox to confirm your email, then log in.",errorGeneric:"Something went wrong. Please try again.",
+nav_dashboard:"Dashboard",nav_diary:"Food Diary",nav_scanner:"Meal Scanner",nav_progress:"Progress",nav_goals:"Goals",nav_settings:"Settings",
+today:"Today",remaining:"Remaining",consumed:"Consumed",goal:"Goal",kcal:"kcal",protein:"Protein",carbs:"Carbs",fat:"Fat",recentMeals:"Recent meals",noMealsToday:"No meals logged today yet.",addFirstMeal:"Add your first meal",
+diaryTitle:"Food Diary",addMeal:"Add meal",editMeal:"Edit meal",deleteMeal:"Delete",confirmDelete:"Delete this entry?",yes:"Yes, delete",cancel:"Cancel",save:"Save",close:"Close",
+mealName:"Dish name",mealType:"Meal type",breakfast:"Breakfast",lunch:"Lunch",dinner:"Dinner",snack:"Snack",calories:"Calories",emptyDiary:"Your diary is empty. Log your first meal, or load sample data from Settings.",
+scannerTitle:"Meal Scanner",scannerDesc:"Snap or upload a photo of your dish and let AI estimate the calories and macros.",uploadPhoto:"Upload a photo",analyzing:"Analyzing your dish...",addToDiary:"Add to diary",rescan:"Try another photo",scannerUnavailable:"AI analysis isn't available (function not deployed or misconfigured). You can still enter the meal manually below.",estimated:"AI estimate — feel free to adjust before saving",
+progressTitle:"Progress",weightLog:"Weight log",addWeight:"Log weight",currentWeight:"Current",startWeight:"Start",target:"Target",noWeights:"No weight entries yet.",weightKg:"Weight (kg)",date:"Date",
+goalsTitle:"Goals",dailyCalGoal:"Daily calorie goal",macroGoals:"Macro targets (grams)",saveGoals:"Save goals",goalsSaved:"Goals updated",
+settingsTitle:"Settings",language:"Language",account:"Account",saveSettings:"Save changes",settingsSaved:"Settings saved",demoData:"Sample data",demoDataDesc:"Populate your account with a week of realistic meals and a weight history, so you can see the app in action.",loadDemo:"Load sample data",seeding:"Loading sample data...",seeded:"Sample data loaded",
+addedToast:"Meal added",updatedToast:"Meal updated",deletedToast:"Meal deleted",weightAddedToast:"Weight logged",loginError:"Incorrect email or password",signupError:"An account with this email already exists",fillFields:"Please fill in all fields",
+setupTitle:"Almost there",setupDesc:"This app needs to be connected to your own Supabase project before it can run. Open index.html, fill in SUPABASE_URL and SUPABASE_ANON_KEY near the top of the script, and follow README.md."},
+fr:{appName:"NutriTrack",tagline:"Mangez malin, sentez-vous bien",login:"Connexion",signup:"Inscription",email:"E-mail",password:"Mot de passe",name:"Nom complet",noAccount:"Pas de compte ?",haveAccount:"Déjà un compte ?",createAccount:"Créer un compte",welcomeBack:"Content de vous revoir",joinUs:"Créez votre compte",logout:"Déconnexion",checkEmail:"Vérifiez votre boîte mail pour confirmer votre adresse, puis connectez-vous.",errorGeneric:"Une erreur est survenue. Réessayez.",
+nav_dashboard:"Tableau de bord",nav_diary:"Journal alimentaire",nav_scanner:"Scanner de repas",nav_progress:"Progression",nav_goals:"Objectifs",nav_settings:"Paramètres",
+today:"Aujourd'hui",remaining:"Restant",consumed:"Consommé",goal:"Objectif",kcal:"kcal",protein:"Protéines",carbs:"Glucides",fat:"Lipides",recentMeals:"Repas récents",noMealsToday:"Aucun repas enregistré aujourd'hui.",addFirstMeal:"Ajouter votre premier repas",
+diaryTitle:"Journal alimentaire",addMeal:"Ajouter un repas",editMeal:"Modifier le repas",deleteMeal:"Supprimer",confirmDelete:"Supprimer cette entrée ?",yes:"Oui, supprimer",cancel:"Annuler",save:"Enregistrer",close:"Fermer",
+mealName:"Nom du plat",mealType:"Type de repas",breakfast:"Petit-déjeuner",lunch:"Déjeuner",dinner:"Dîner",snack:"Collation",calories:"Calories",emptyDiary:"Votre journal est vide. Ajoutez un repas, ou chargez des données d'exemple depuis les Paramètres.",
+scannerTitle:"Scanner de repas",scannerDesc:"Prenez ou importez une photo de votre plat et laissez l'IA estimer les calories et macros.",uploadPhoto:"Importer une photo",analyzing:"Analyse de votre plat...",addToDiary:"Ajouter au journal",rescan:"Essayer une autre photo",scannerUnavailable:"L'analyse IA n'est pas disponible (fonction non déployée ou mal configurée). Vous pouvez saisir le repas manuellement ci-dessous.",estimated:"Estimation de l'IA — ajustez si besoin avant d'enregistrer",
+progressTitle:"Progression",weightLog:"Suivi du poids",addWeight:"Enregistrer le poids",currentWeight:"Actuel",startWeight:"Départ",target:"Cible",noWeights:"Aucune donnée de poids pour l'instant.",weightKg:"Poids (kg)",date:"Date",
+goalsTitle:"Objectifs",dailyCalGoal:"Objectif calorique quotidien",macroGoals:"Objectifs de macros (grammes)",saveGoals:"Enregistrer les objectifs",goalsSaved:"Objectifs mis à jour",
+settingsTitle:"Paramètres",language:"Langue",account:"Compte",saveSettings:"Enregistrer",settingsSaved:"Paramètres enregistrés",demoData:"Données de démonstration",demoDataDesc:"Remplissez votre compte avec une semaine de repas réalistes et un historique de poids, pour voir l'app en action.",loadDemo:"Charger des données d'exemple",seeding:"Chargement des données...",seeded:"Données d'exemple chargées",
+addedToast:"Repas ajouté",updatedToast:"Repas mis à jour",deletedToast:"Repas supprimé",weightAddedToast:"Poids enregistré",loginError:"E-mail ou mot de passe incorrect",signupError:"Un compte existe déjà avec cet e-mail",fillFields:"Veuillez remplir tous les champs",
+setupTitle:"Presque prêt",setupDesc:"Cette app doit être connectée à votre propre projet Supabase avant de fonctionner. Ouvrez index.html, renseignez SUPABASE_URL et SUPABASE_ANON_KEY en haut du script, et suivez README.md."},
+es:{appName:"NutriTrack",tagline:"Come inteligente, siéntete genial",login:"Iniciar sesión",signup:"Registrarse",email:"Correo",password:"Contraseña",name:"Nombre completo",noAccount:"¿Sin cuenta?",haveAccount:"¿Ya tienes cuenta?",createAccount:"Crear cuenta",welcomeBack:"Bienvenido de nuevo",joinUs:"Crea tu cuenta",logout:"Cerrar sesión",checkEmail:"Revisa tu correo para confirmar tu cuenta y luego inicia sesión.",errorGeneric:"Algo salió mal. Inténtalo de nuevo.",
+nav_dashboard:"Panel",nav_diary:"Diario de comidas",nav_scanner:"Escáner de comidas",nav_progress:"Progreso",nav_goals:"Objetivos",nav_settings:"Ajustes",
+today:"Hoy",remaining:"Restante",consumed:"Consumido",goal:"Objetivo",kcal:"kcal",protein:"Proteína",carbs:"Carbohidratos",fat:"Grasa",recentMeals:"Comidas recientes",noMealsToday:"Aún no hay comidas registradas hoy.",addFirstMeal:"Añade tu primera comida",
+diaryTitle:"Diario de comidas",addMeal:"Añadir comida",editMeal:"Editar comida",deleteMeal:"Eliminar",confirmDelete:"¿Eliminar esta entrada?",yes:"Sí, eliminar",cancel:"Cancelar",save:"Guardar",close:"Cerrar",
+mealName:"Nombre del plato",mealType:"Tipo de comida",breakfast:"Desayuno",lunch:"Almuerzo",dinner:"Cena",snack:"Snack",calories:"Calorías",emptyDiary:"Tu diario está vacío. Añade una comida, o carga datos de ejemplo desde Ajustes.",
+scannerTitle:"Escáner de comidas",scannerDesc:"Toma o sube una foto de tu plato y deja que la IA estime las calorías y macros.",uploadPhoto:"Subir una foto",analyzing:"Analizando tu plato...",addToDiary:"Añadir al diario",rescan:"Probar otra foto",scannerUnavailable:"El análisis con IA no está disponible (función no desplegada o mal configurada). Puedes introducir la comida manualmente abajo.",estimated:"Estimación de la IA — ajusta si es necesario antes de guardar",
+progressTitle:"Progreso",weightLog:"Registro de peso",addWeight:"Registrar peso",currentWeight:"Actual",startWeight:"Inicio",target:"Meta",noWeights:"Todavía no hay registros de peso.",weightKg:"Peso (kg)",date:"Fecha",
+goalsTitle:"Objetivos",dailyCalGoal:"Objetivo calórico diario",macroGoals:"Objetivos de macros (gramos)",saveGoals:"Guardar objetivos",goalsSaved:"Objetivos actualizados",
+settingsTitle:"Ajustes",language:"Idioma",account:"Cuenta",saveSettings:"Guardar cambios",settingsSaved:"Ajustes guardados",demoData:"Datos de demostración",demoDataDesc:"Rellena tu cuenta con una semana de comidas realistas y un historial de peso, para ver la app en acción.",loadDemo:"Cargar datos de ejemplo",seeding:"Cargando datos de ejemplo...",seeded:"Datos de ejemplo cargados",
+addedToast:"Comida añadida",updatedToast:"Comida actualizada",deletedToast:"Comida eliminada",weightAddedToast:"Peso registrado",loginError:"Correo o contraseña incorrectos",signupError:"Ya existe una cuenta con este correo",fillFields:"Por favor completa todos los campos",
+setupTitle:"Casi listo",setupDesc:"Esta app necesita conectarse a tu propio proyecto de Supabase antes de funcionar. Abre index.html, rellena SUPABASE_URL y SUPABASE_ANON_KEY al principio del script, y sigue README.md."}
+};
+let LANG = localStorage.getItem('ct_lang') || (navigator.language||'fr').slice(0,2);
+if(!I18N[LANG]) LANG='fr';
+const t = k => (I18N[LANG]&&I18N[LANG][k]) || I18N.en[k] || k;
+function setLang(l){ LANG=l; localStorage.setItem('ct_lang',l); render(); }
+
+function uid(){ return Math.random().toString(36).slice(2,10); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function daysAgo(n){ const d=new Date(); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); }
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+/* ---------- state ---------- */
+let state = { user:null, email:null, data:null, booting:true, view:'dashboard', toast:null, modal:null, scan:{status:'idle',result:null,file:null}, authMode:'login', authErr:'', authNotice:'', authBusy:false };
+
+function profile(){ return (state.data&&state.data.profile) || {goals:{cal:2000,protein:150,carbs:200,fat:65},startWeight:null,targetWeight:null,name:''}; }
+function meals(){ return (state.data&&state.data.meals)||[]; }
+function weights(){ return (state.data&&state.data.weights)||[]; }
+
+function showToast(msg){ state.toast=msg; render(); setTimeout(()=>{ state.toast=null; render(); },2200); }
+function mapAuthError(error){
+  const msg=(error&&error.message)||'';
+  if(/already registered|already exists/i.test(msg)) return t('signupError');
+  if(/invalid login credentials/i.test(msg)) return t('loginError');
+  return msg || t('errorGeneric');
+}
+
+/* ---------- auth ---------- */
+async function loadUserData(){
+  const [pRes,mRes,wRes] = await Promise.all([
+    sb.from('profiles').select('*').eq('id',state.user).maybeSingle(),
+    sb.from('meals').select('*').eq('user_id',state.user).order('date',{ascending:false}),
+    sb.from('weights').select('*').eq('user_id',state.user).order('date',{ascending:true})
+  ]);
+  const p=pRes.data||{};
+  state.data={
+    profile:{ name:p.name||state.email, goals:{cal:p.cal_goal??2000,protein:p.protein_goal??150,carbs:p.carbs_goal??200,fat:p.fat_goal??65}, startWeight:p.start_weight, targetWeight:p.target_weight },
+    meals: mRes.data||[],
+    weights: wRes.data||[]
+  };
+}
+async function afterAuth(user){
+  state.user=user.id; state.email=user.email;
+  await loadUserData();
+  state.view='dashboard'; state.authErr=''; state.authNotice=''; state.authBusy=false; render();
+}
+async function doLogin(email,p){
+  state.authBusy=true; render();
+  const {data,error} = await sb.auth.signInWithPassword({email,password:p});
+  if(error){ state.authErr=mapAuthError(error); state.authBusy=false; render(); return; }
+  await afterAuth(data.user);
+}
+async function doSignup(email,p,name){
+  state.authBusy=true; render();
+  const {data,error} = await sb.auth.signUp({email,password:p,options:{data:{name}}});
+  if(error){ state.authErr=mapAuthError(error); state.authBusy=false; render(); return; }
+  if(data.user && !data.session){ state.authBusy=false; state.authNotice=t('checkEmail'); render(); return; }
+  await afterAuth(data.user);
+}
+async function doLogout(){ if(sb) await sb.auth.signOut(); state.user=null; state.email=null; state.data=null; state.view='dashboard'; render(); }
+
+/* ---------- CRUD: meals (optimistic, with rollback on failure) ---------- */
+async function addMeal(m){
+  const tempId='tmp_'+uid(); const optimistic={...m,id:tempId};
+  state.data.meals.unshift(optimistic); state.modal=null; render(); showToast(t('addedToast'));
+  const {data,error} = await sb.from('meals').insert({user_id:state.user,name:m.name,type:m.type,cal:m.cal,protein:m.protein,carbs:m.carbs,fat:m.fat,date:m.date,time:m.time}).select().single();
+  const idx=state.data.meals.findIndex(x=>x.id===tempId);
+  if(error){ if(idx>-1) state.data.meals.splice(idx,1); showToast(t('errorGeneric')); }
+  else if(idx>-1){ state.data.meals[idx]=data; }
+  render();
+}
+async function updateMeal(id,patch){
+  const prev = state.data.meals.find(m=>m.id===id);
+  state.data.meals = state.data.meals.map(m=>m.id===id?{...m,...patch}:m);
+  state.modal=null; render(); showToast(t('updatedToast'));
+  const {error} = await sb.from('meals').update(patch).eq('id',id);
+  if(error){ state.data.meals = state.data.meals.map(m=>m.id===id?prev:m); render(); showToast(t('errorGeneric')); }
+}
+async function deleteMeal(id){
+  const prevList = state.data.meals;
+  state.data.meals = state.data.meals.filter(m=>m.id!==id);
+  state.modal=null; render(); showToast(t('deletedToast'));
+  const {error} = await sb.from('meals').delete().eq('id',id);
+  if(error){ state.data.meals = prevList; render(); showToast(t('errorGeneric')); }
+}
+async function addWeight(kg,date){
+  const tempId='tmp_'+uid(); const optimistic={id:tempId,date,kg:parseFloat(kg)};
+  state.data.weights=[...state.data.weights,optimistic].sort((a,b)=>a.date<b.date?-1:1);
+  state.modal=null; render(); showToast(t('weightAddedToast'));
+  const {data,error} = await sb.from('weights').insert({user_id:state.user,date,kg:parseFloat(kg)}).select().single();
+  if(error){ state.data.weights = state.data.weights.filter(w=>w.id!==tempId); }
+  else { state.data.weights = state.data.weights.map(w=>w.id===tempId?data:w); }
+  render();
+}
+async function saveGoals(g){
+  const prev = profile().goals;
+  state.data.profile.goals=g; render(); showToast(t('goalsSaved'));
+  const {error} = await sb.from('profiles').update({cal_goal:g.cal,protein_goal:g.protein,carbs_goal:g.carbs,fat_goal:g.fat}).eq('id',state.user);
+  if(error){ state.data.profile.goals=prev; render(); showToast(t('errorGeneric')); }
+}
+async function seedDemoData(){
+  showToast(t('seeding'));
+  const foods=[
+    ['breakfast','Greek yogurt & berries',260,20,28,6],['breakfast','Oatmeal with banana',340,10,58,7],['breakfast','Avocado toast & eggs',420,18,32,24],
+    ['lunch','Grilled chicken salad',480,42,20,22],['lunch','Salmon poke bowl',560,32,60,18],['lunch','Turkey wrap',510,28,48,20],
+    ['dinner','Beef stir-fry with rice',620,38,55,24],['dinner','Baked cod & vegetables',390,36,20,14],['dinner','Veggie pasta',540,18,78,16],
+    ['snack','Almonds (30g)',180,6,6,15],['snack','Protein shake',220,25,15,5],['snack','Apple & peanut butter',210,6,22,12]
+  ];
+  let inserts=[];
+  for(let d=6; d>=0; d--){
+    const date=daysAgo(d);
+    const picks=[foods[Math.floor(Math.random()*3)],foods[3+Math.floor(Math.random()*3)],foods[6+Math.floor(Math.random()*3)]];
+    if(Math.random()>0.4) picks.push(foods[9+Math.floor(Math.random()*3)]);
+    picks.forEach(f=>inserts.push({user_id:state.user,type:f[0],name:f[1],cal:f[2],protein:f[3],carbs:f[4],fat:f[5],date,
+      time:f[0]==='breakfast'?'08:1'+Math.floor(Math.random()*9):f[0]==='lunch'?'13:'+(10+Math.floor(Math.random()*40)):f[0]==='dinner'?'19:'+(10+Math.floor(Math.random()*40)):'16:'+(10+Math.floor(Math.random()*40))}));
+  }
+  await sb.from('meals').insert(inserts);
+  let weightsArr=[]; let w=82;
+  for(let d=27; d>=0; d-=3){ w-=(0.15+Math.random()*0.25); weightsArr.push({user_id:state.user,date:daysAgo(d),kg:Math.round(w*10)/10}); }
+  await sb.from('weights').insert(weightsArr);
+  await loadUserData(); showToast(t('seeded')); render();
+}
+
+/* ---------- UI atoms ---------- */
+const icons = {
+  dashboard:'<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
+  diary:'<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>',
+  scanner:'<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V5a2 2 0 0 1 2-2h2M20 7V5a2 2 0 0 0-2-2h-2M4 17v2a2 2 0 0 0 2 2h2M20 17v2a2 2 0 0 1-2 2h-2"/><circle cx="12" cy="12" r="3.5"/></svg>',
+  progress:'<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8M21 7v6M21 7h-6"/></svg>',
+  goals:'<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>',
+  settings:'<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg>',
+  camera:'<svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7V6a2 2 0 0 1 2-2h2l1.5-2h5L16 4h2a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+  plus:'<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>'
+};
+
+/* ---------- render root ---------- */
+function render(){
+  const app=document.getElementById('app');
+  if(state.booting){ app.innerHTML=`<div class="min-h-screen flex items-center justify-center"><div class="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full spin"></div></div>`; return; }
+  if(!CONFIGURED){ app.innerHTML=setupScreen(); return; }
+  app.innerHTML = state.user ? appShell() : authScreen();
+  const fi=document.getElementById('scanFileInput');
+  if(fi) fi.onchange = handleFileSelect;
+}
+function setupScreen(){
+  return `<div class="min-h-screen flex items-center justify-center p-6"><div class="max-w-md bg-white border border-amber-200 rounded-2xl p-6 text-center">
+    <div class="text-3xl mb-2">🛠️</div>
+    <h1 class="font-bold text-lg mb-2">${t('setupTitle')}</h1>
+    <p class="text-sm text-slate-500">${t('setupDesc')}</p>
+  </div></div>`;
+}
+
+/* ---------- auth screen ---------- */
+function authScreen(){
+  const isLogin = state.authMode==='login';
+  return `
+  <div class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-emerald-50 via-white to-teal-50">
+    <div class="w-full max-w-sm">
+      <div class="text-center mb-6">
+        <div class="mx-auto w-14 h-14 rounded-2xl bg-emerald-500 text-white flex items-center justify-center text-2xl font-bold shadow-lg shadow-emerald-200">N</div>
+        <h1 class="text-2xl font-bold mt-3 text-slate-900">${t('appName')}</h1>
+        <p class="text-slate-500 text-sm">${t('tagline')}</p>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 fade">
+        <h2 class="font-semibold text-lg mb-4">${isLogin?t('welcomeBack'):t('joinUs')}</h2>
+        ${state.authErr?`<div class="mb-3 text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">${esc(state.authErr)}</div>`:''}
+        ${state.authNotice?`<div class="mb-3 text-sm text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2">${esc(state.authNotice)}</div>`:''}
+        <form onsubmit="return submitAuth(event)" class="space-y-3">
+          ${!isLogin?`<input name="name" placeholder="${t('name')}" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-emerald-400" required>`:''}
+          <input name="email" type="email" placeholder="${t('email')}" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-emerald-400" required>
+          <input name="password" type="password" minlength="6" placeholder="${t('password')}" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-emerald-400" required>
+          <button ${state.authBusy?'disabled':''} class="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl py-2.5 text-sm font-semibold transition disabled:opacity-60">${state.authBusy?'…':(isLogin?t('login'):t('createAccount'))}</button>
+        </form>
+        <p class="text-center text-sm text-slate-500 mt-4">${isLogin?t('noAccount'):t('haveAccount')} <button onclick="toggleAuthMode()" class="text-emerald-600 font-medium">${isLogin?t('signup'):t('login')}</button></p>
+      </div>
+      <div class="flex justify-center gap-2 mt-5">${['en','fr','es'].map(l=>`<button onclick="setLang('${l}')" class="px-3 py-1 text-xs rounded-full ${LANG===l?'bg-emerald-500 text-white':'bg-white text-slate-500 border border-slate-200'}">${l.toUpperCase()}</button>`).join('')}</div>
+    </div>
+  </div>`;
+}
+function toggleAuthMode(){ state.authMode = state.authMode==='login'?'signup':'login'; state.authErr=''; state.authNotice=''; render(); }
+function submitAuth(ev){
+  ev.preventDefault();
+  const f=ev.target; const email=f.email.value.trim(); const p=f.password.value;
+  if(!email||!p){ state.authErr=t('fillFields'); render(); return false; }
+  if(state.authMode==='login') doLogin(email,p); else doSignup(email,p,(f.name&&f.name.value.trim())||email);
+  return false;
+}
+
+/* ---------- app shell ---------- */
+function navItems(){ return [['dashboard','nav_dashboard'],['diary','nav_diary'],['scanner','nav_scanner'],['progress','nav_progress'],['goals','nav_goals'],['settings','nav_settings']]; }
+function appShell(){
+  const uname = profile().name || state.email;
+  return `
+  <div class="min-h-screen flex">
+    <aside class="hidden md:flex flex-col w-60 shrink-0 bg-white border-r border-slate-100 py-6 px-4">
+      <div class="flex items-center gap-2 px-2 mb-8">
+        <div class="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-bold">N</div>
+        <span class="font-bold text-slate-900">${t('appName')}</span>
+      </div>
+      <nav class="flex-1 space-y-1">
+        ${navItems().map(([id,label])=>`<button onclick="setView('${id}')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${state.view===id?'bg-emerald-50 text-emerald-700':'text-slate-500 hover:bg-slate-50'}">${icons[id]}<span>${t(label)}</span></button>`).join('')}
+      </nav>
+      <div class="border-t border-slate-100 pt-4 mt-4">
+        <div class="text-sm font-medium text-slate-700 truncate mb-2">${esc(uname)}</div>
+        <button onclick="doLogout()" class="text-sm text-slate-400 hover:text-red-500">${t('logout')}</button>
+      </div>
+    </aside>
+
+    <div class="flex-1 min-w-0 flex flex-col">
+      <header class="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-slate-100 sticky top-0 z-20">
+        <div class="flex items-center gap-2"><div class="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center font-bold text-sm">N</div><span class="font-bold">${t('appName')}</span></div>
+        <button onclick="doLogout()" class="text-xs text-slate-400">${t('logout')}</button>
+      </header>
+      <main class="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8 max-w-5xl w-full mx-auto">
+        ${pageContent()}
+      </main>
+      <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-slate-100 flex justify-around py-2 z-20">
+        ${navItems().map(([id,label])=>`<button onclick="setView('${id}')" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] ${state.view===id?'text-emerald-600':'text-slate-400'}">${icons[id]}${t(label).split(' ')[0]}</button>`).join('')}
+      </nav>
+    </div>
+  </div>
+  ${state.toast?`<div class="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg z-50 fade">${esc(state.toast)}</div>`:''}
+  ${state.modal?modalHtml():''}
+  `;
+}
+function setView(v){ state.view=v; state.scan={status:'idle',result:null,file:null}; render(); }
+
+function pageContent(){
+  switch(state.view){
+    case 'diary': return pageDiary();
+    case 'scanner': return pageScanner();
+    case 'progress': return pageProgress();
+    case 'goals': return pageGoals();
+    case 'settings': return pageSettings();
+    default: return pageDashboard();
+  }
+}
+
+/* ---------- Dashboard ---------- */
+function pageDashboard(){
+  const g=profile().goals; const list=meals().filter(m=>m.date===todayStr());
+  const sum=(k)=>list.reduce((a,m)=>a+Number(m[k]||0),0);
+  const cal=sum('cal'), pro=sum('protein'), carb=sum('carbs'), fat=sum('fat');
+  const pct=Math.min(100,Math.round(cal/g.cal*100))||0;
+  const remaining=Math.max(0,g.cal-cal);
+  const ring=`conic-gradient(var(--acc) ${pct*3.6}deg, #e5e7eb 0deg)`;
+  const macroBar=(label,val,goal,color)=>`<div><div class="flex justify-between text-xs text-slate-500 mb-1"><span>${label}</span><span>${val}g / ${goal}g</span></div><div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full bar-fill rounded-full" style="width:${Math.min(100,val/goal*100)||0}%;background:${color}"></div></div></div>`;
+  return `
+  <div class="fade">
+    <h1 class="text-2xl font-bold text-slate-900 mb-1">${t('today')}</h1>
+    <p class="text-slate-400 text-sm mb-6">${new Date().toLocaleDateString(LANG==='en'?'en-US':LANG==='fr'?'fr-FR':'es-ES',{weekday:'long',month:'long',day:'numeric'})}</p>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
+      <div class="bg-white rounded-2xl border border-slate-100 p-6 flex items-center gap-6">
+        <div class="ring w-28 h-28 shrink-0" style="background:${ring}"><div class="w-20 h-20 rounded-full bg-white flex flex-col items-center justify-center"><span class="text-xl font-bold">${remaining}</span><span class="text-[10px] text-slate-400">${t('remaining')}</span></div></div>
+        <div class="space-y-1 text-sm">
+          <div class="flex justify-between gap-6"><span class="text-slate-400">${t('consumed')}</span><span class="font-semibold">${cal} ${t('kcal')}</span></div>
+          <div class="flex justify-between gap-6"><span class="text-slate-400">${t('goal')}</span><span class="font-semibold">${g.cal} ${t('kcal')}</span></div>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl border border-slate-100 p-6 lg:col-span-2 space-y-4">
+        ${macroBar(t('protein'),pro,g.protein,'#10b981')}
+        ${macroBar(t('carbs'),carb,g.carbs,'#3b82f6')}
+        ${macroBar(t('fat'),fat,g.fat,'#f59e0b')}
+      </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-100 p-6">
+      <div class="flex items-center justify-between mb-4"><h2 class="font-semibold text-slate-800">${t('recentMeals')}</h2><button onclick="openMealModal()" class="text-emerald-600 text-sm font-medium flex items-center gap-1">${icons.plus}${t('addMeal')}</button></div>
+      ${list.length? `<div class="space-y-2">${list.slice(0,6).map(mealRow).join('')}</div>` : emptyState(t('noMealsToday'), t('addFirstMeal'), "openMealModal()")}
+    </div>
+  </div>`;
+}
+function emptyState(msg,cta,onclick){
+  return `<div class="text-center py-10">
+    <div class="w-14 h-14 mx-auto rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 mb-3">${icons.diary}</div>
+    <p class="text-slate-400 text-sm mb-4">${esc(msg)}</p>
+    ${cta?`<button onclick="${onclick}" class="bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-emerald-600">${esc(cta)}</button>`:''}
+  </div>`;
+}
+function mealRow(m){
+  return `<div class="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 group">
+    <div class="flex items-center gap-3 min-w-0">
+      <div class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs font-bold shrink-0">${(t(m.type)||m.type)[0]}</div>
+      <div class="min-w-0"><div class="text-sm font-medium truncate">${esc(m.name)}</div><div class="text-xs text-slate-400">${t(m.type)} · ${m.time||''}</div></div>
+    </div>
+    <div class="flex items-center gap-3 shrink-0">
+      <span class="text-sm font-semibold">${m.cal} ${t('kcal')}</span>
+      <button onclick='openMealModal(${JSON.stringify(m)})' class="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-emerald-600 transition">✎</button>
+      <button onclick="confirmDeleteMeal('${m.id}')" class="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 transition">✕</button>
+    </div>
+  </div>`;
+}
+
+/* ---------- Diary ---------- */
+function pageDiary(){
+  const list=meals().slice().sort((a,b)=> (a.date+(a.time||'')<b.date+(b.time||''))?1:-1);
+  const groups={};
+  list.forEach(m=>{ (groups[m.date]=groups[m.date]||[]).push(m); });
+  const dates=Object.keys(groups).sort().reverse();
+  return `<div class="fade">
+    <div class="flex items-center justify-between mb-6"><h1 class="text-2xl font-bold text-slate-900">${t('diaryTitle')}</h1><button onclick="openMealModal()" class="bg-emerald-500 text-white text-sm font-medium px-4 py-2.5 rounded-xl flex items-center gap-1 hover:bg-emerald-600">${icons.plus}${t('addMeal')}</button></div>
+    ${list.length? dates.map(d=>`
+      <div class="mb-5">
+        <div class="text-xs font-semibold text-slate-400 uppercase mb-2">${new Date(d+'T00:00').toLocaleDateString(LANG==='en'?'en-US':LANG==='fr'?'fr-FR':'es-ES',{weekday:'short',month:'short',day:'numeric'})}</div>
+        <div class="bg-white rounded-2xl border border-slate-100 p-3 space-y-1">${groups[d].map(mealRow).join('')}</div>
+      </div>`).join('') : `<div class="bg-white rounded-2xl border border-slate-100">${emptyState(t('emptyDiary'), t('addMeal'), "openMealModal()")}</div>`}
+  </div>`;
+}
+function openMealModal(m){ state.modal={type:'meal', data:m||null}; render(); }
+function confirmDeleteMeal(id){ state.modal={type:'confirmDelete', id}; render(); }
+
+/* ---------- Scanner ---------- */
+function pageScanner(){
+  const s=state.scan;
+  return `<div class="fade max-w-2xl">
+    <h1 class="text-2xl font-bold text-slate-900 mb-1">${t('scannerTitle')}</h1>
+    <p class="text-slate-400 text-sm mb-6">${t('scannerDesc')}</p>
+    <div class="bg-white rounded-2xl border border-slate-100 p-6">
+      ${s.status==='idle'?`
+        <label class="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-slate-200 rounded-2xl py-14 cursor-pointer hover:border-emerald-300 hover:bg-emerald-50/30 transition">
+          <span class="text-emerald-400">${icons.camera}</span>
+          <span class="text-sm font-medium text-slate-600">${t('uploadPhoto')}</span>
+          <input id="scanFileInput" type="file" accept="image/*" capture="environment" class="hidden">
+        </label>` : ''}
+      ${s.status==='analyzing'?`
+        <div class="flex flex-col items-center justify-center gap-4 py-14">
+          ${s.preview?`<img src="${s.preview}" class="w-32 h-32 object-cover rounded-2xl">`:''}
+          <div class="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full spin"></div>
+          <p class="text-sm text-slate-500">${t('analyzing')}</p>
+        </div>` : ''}
+      ${s.status==='result'?resultForm(s):''}
+      ${s.status==='unavailable'?`<div class="text-center py-6"><p class="text-sm text-amber-600 bg-amber-50 rounded-xl px-4 py-3 mb-4">${t('scannerUnavailable')}</p>${resultForm({preview:s.preview,result:s.result||{name:'',cal:'',protein:'',carbs:'',fat:'',type:'lunch'}})}</div>`:''}
+    </div>
+  </div>`;
+}
+function resultForm(s){
+  const r=s.result;
+  return `
+  <div class="flex flex-col md:flex-row gap-6">
+    ${s.preview?`<img src="${s.preview}" class="w-full md:w-40 h-40 object-cover rounded-2xl shrink-0">`:''}
+    <div class="flex-1">
+      <p class="text-xs font-medium text-emerald-600 mb-3">${t('estimated')}</p>
+      <form onsubmit="return submitScanResult(event)" class="space-y-3">
+        <input name="name" value="${esc(r.name||'')}" placeholder="${t('mealName')}" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" required>
+        <select name="type" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm">
+          ${['breakfast','lunch','dinner','snack'].map(ty=>`<option value="${ty}" ${r.type===ty?'selected':''}>${t(ty)}</option>`).join('')}
+        </select>
+        <div class="grid grid-cols-4 gap-2">
+          <input name="cal" type="number" value="${r.cal||''}" placeholder="${t('calories')}" class="border border-slate-200 rounded-xl px-2 py-2 text-sm" required>
+          <input name="protein" type="number" value="${r.protein||''}" placeholder="${t('protein')}" class="border border-slate-200 rounded-xl px-2 py-2 text-sm">
+          <input name="carbs" type="number" value="${r.carbs||''}" placeholder="${t('carbs')}" class="border border-slate-200 rounded-xl px-2 py-2 text-sm">
+          <input name="fat" type="number" value="${r.fat||''}" placeholder="${t('fat')}" class="border border-slate-200 rounded-xl px-2 py-2 text-sm">
+        </div>
+        <div class="flex gap-2 pt-1">
+          <button type="button" onclick="resetScan()" class="flex-1 border border-slate-200 text-slate-500 rounded-xl py-2.5 text-sm font-medium">${t('rescan')}</button>
+          <button class="flex-1 bg-emerald-500 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-emerald-600">${t('addToDiary')}</button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+function resetScan(){ state.scan={status:'idle',result:null,file:null}; render(); }
+function fileToBase64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result.split(',')[1]);
+    r.onerror=()=>rej(new Error('read failed'));
+    r.readAsDataURL(file);
+  });
+}
+async function handleFileSelect(ev){
+  const file=ev.target.files[0]; if(!file) return;
+  const preview=URL.createObjectURL(file);
+  state.scan={status:'analyzing',preview,result:null};
+  render();
+  try{
+    const b64 = await fileToBase64(file);
+    const {data,error} = await sb.functions.invoke('analyze-meal',{body:{image:b64,mediaType:file.type,lang:LANG}});
+    if(error || !data || data.error) throw new Error((data&&data.error)||(error&&error.message)||'analysis failed');
+    state.scan={status:'result',preview,result:data};
+  }catch(e){
+    state.scan={status:'unavailable',preview,result:{name:'',type:'lunch',cal:'',protein:'',carbs:'',fat:''}};
+  }
+  render();
+}
+function submitScanResult(ev){
+  ev.preventDefault(); const f=ev.target;
+  addMeal({name:f.name.value.trim(),type:f.type.value,cal:+f.cal.value||0,protein:+f.protein.value||0,carbs:+f.carbs.value||0,fat:+f.fat.value||0,date:todayStr(),time:new Date().toTimeString().slice(0,5)});
+  resetScan();
+  return false;
+}
+
+/* ---------- Progress ---------- */
+function pageProgress(){
+  const w=weights(); const p=profile();
+  const cur=w.length?w[w.length-1].kg:null;
+  const max=Math.max(...w.map(x=>x.kg),p.startWeight||0,1), min=Math.min(...w.map(x=>x.kg),p.targetWeight||999);
+  const pts = w.map((x,i)=> `${(i/(Math.max(w.length-1,1)))*100},${100-((x.kg-min)/((max-min)||1))*90-5}`).join(' ');
+  return `<div class="fade">
+    <div class="flex items-center justify-between mb-6"><h1 class="text-2xl font-bold text-slate-900">${t('progressTitle')}</h1><button onclick="openWeightModal()" class="bg-emerald-500 text-white text-sm font-medium px-4 py-2.5 rounded-xl flex items-center gap-1 hover:bg-emerald-600">${icons.plus}${t('addWeight')}</button></div>
+    <div class="grid grid-cols-3 gap-3 mb-6">
+      <div class="bg-white rounded-2xl border border-slate-100 p-4 text-center"><div class="text-xs text-slate-400 mb-1">${t('startWeight')}</div><div class="text-lg font-bold">${p.startWeight||'—'}</div></div>
+      <div class="bg-white rounded-2xl border border-slate-100 p-4 text-center"><div class="text-xs text-slate-400 mb-1">${t('currentWeight')}</div><div class="text-lg font-bold text-emerald-600">${cur??'—'}</div></div>
+      <div class="bg-white rounded-2xl border border-slate-100 p-4 text-center"><div class="text-xs text-slate-400 mb-1">${t('target')}</div><div class="text-lg font-bold">${p.targetWeight||'—'}</div></div>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-100 p-6">
+      <h2 class="font-semibold text-slate-800 mb-4">${t('weightLog')}</h2>
+      ${w.length? `<svg viewBox="0 0 100 100" preserveAspectRatio="none" class="w-full h-40 mb-4"><polyline points="${pts}" fill="none" stroke="#10b981" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
+      <div class="space-y-1">${w.slice().reverse().slice(0,8).map(x=>`<div class="flex justify-between text-sm py-1.5 border-b border-slate-50 last:border-0"><span class="text-slate-400">${x.date}</span><span class="font-medium">${x.kg} kg</span></div>`).join('')}</div>`
+      : emptyState(t('noWeights'), t('addWeight'), "openWeightModal()")}
+    </div>
+  </div>`;
+}
+function openWeightModal(){ state.modal={type:'weight'}; render(); }
+
+/* ---------- Goals ---------- */
+function pageGoals(){
+  const g=profile().goals;
+  return `<div class="fade max-w-lg">
+    <h1 class="text-2xl font-bold text-slate-900 mb-6">${t('goalsTitle')}</h1>
+    <div class="bg-white rounded-2xl border border-slate-100 p-6">
+      <form onsubmit="return submitGoals(event)" class="space-y-4">
+        <div><label class="text-xs font-medium text-slate-500">${t('dailyCalGoal')}</label><input name="cal" type="number" value="${g.cal}" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm mt-1" required></div>
+        <div><label class="text-xs font-medium text-slate-500 block mb-2">${t('macroGoals')}</label>
+          <div class="grid grid-cols-3 gap-2">
+            <input name="protein" type="number" value="${g.protein}" placeholder="${t('protein')}" class="border border-slate-200 rounded-xl px-2 py-2 text-sm">
+            <input name="carbs" type="number" value="${g.carbs}" placeholder="${t('carbs')}" class="border border-slate-200 rounded-xl px-2 py-2 text-sm">
+            <input name="fat" type="number" value="${g.fat}" placeholder="${t('fat')}" class="border border-slate-200 rounded-xl px-2 py-2 text-sm">
+          </div>
+        </div>
+        <button class="w-full bg-emerald-500 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-emerald-600">${t('saveGoals')}</button>
+      </form>
+    </div>
+  </div>`;
+}
+function submitGoals(ev){ ev.preventDefault(); const f=ev.target; saveGoals({cal:+f.cal.value,protein:+f.protein.value,carbs:+f.carbs.value,fat:+f.fat.value}); return false; }
+
+/* ---------- Settings ---------- */
+function pageSettings(){
+  const p=profile();
+  return `<div class="fade max-w-lg">
+    <h1 class="text-2xl font-bold text-slate-900 mb-6">${t('settingsTitle')}</h1>
+    <div class="bg-white rounded-2xl border border-slate-100 p-6 mb-5">
+      <h2 class="font-semibold text-slate-800 mb-3">${t('account')}</h2>
+      <form onsubmit="return submitSettings(event)" class="space-y-3">
+        <div><label class="text-xs font-medium text-slate-500">${t('name')}</label><input name="name" value="${esc(p.name||'')}" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm mt-1"></div>
+        <div><label class="text-xs font-medium text-slate-500">${t('startWeight')} (kg)</label><input name="startWeight" type="number" value="${p.startWeight||''}" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm mt-1"></div>
+        <div><label class="text-xs font-medium text-slate-500">${t('target')} (kg)</label><input name="targetWeight" type="number" value="${p.targetWeight||''}" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm mt-1"></div>
+        <button class="w-full bg-emerald-500 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-emerald-600">${t('saveSettings')}</button>
+      </form>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-100 p-6 mb-5">
+      <h2 class="font-semibold text-slate-800 mb-3">${t('language')}</h2>
+      <div class="flex gap-2">${['en','fr','es'].map(l=>`<button onclick="setLang('${l}')" class="px-4 py-2 text-sm rounded-xl ${LANG===l?'bg-emerald-500 text-white':'bg-slate-50 text-slate-500'}">${l.toUpperCase()}</button>`).join('')}</div>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-100 p-6">
+      <h2 class="font-semibold text-slate-800 mb-1">${t('demoData')}</h2>
+      <p class="text-sm text-slate-400 mb-3">${t('demoDataDesc')}</p>
+      <button onclick="seedDemoData()" class="border border-emerald-200 text-emerald-700 rounded-xl px-4 py-2 text-sm font-medium hover:bg-emerald-50">${t('loadDemo')}</button>
+    </div>
+  </div>`;
+}
+async function submitSettings(ev){
+  ev.preventDefault(); const f=ev.target;
+  const name=f.name.value.trim()||state.email;
+  const startWeight=f.startWeight.value?+f.startWeight.value:null;
+  const targetWeight=f.targetWeight.value?+f.targetWeight.value:null;
+  state.data.profile={...state.data.profile,name,startWeight,targetWeight};
+  showToast(t('settingsSaved')); render();
+  const {error} = await sb.from('profiles').update({name,start_weight:startWeight,target_weight:targetWeight}).eq('id',state.user);
+  if(error) showToast(t('errorGeneric'));
+  return false;
+}
+
+/* ---------- Modal ---------- */
+function modalHtml(){
+  const m=state.modal;
+  if(m.type==='confirmDelete'){
+    return `<div class="fixed inset-0 modal-bg flex items-center justify-center z-40 p-4" onclick="if(event.target===this) closeModal()">
+      <div class="bg-white rounded-2xl p-6 w-full max-w-sm fade">
+        <p class="text-slate-700 mb-5">${t('confirmDelete')}</p>
+        <div class="flex gap-2"><button onclick="closeModal()" class="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-medium">${t('cancel')}</button>
+        <button onclick="deleteMeal('${m.id}')" class="flex-1 bg-red-500 text-white rounded-xl py-2.5 text-sm font-semibold">${t('yes')}</button></div>
+      </div></div>`;
+  }
+  if(m.type==='weight'){
+    return `<div class="fixed inset-0 modal-bg flex items-center justify-center z-40 p-4" onclick="if(event.target===this) closeModal()">
+      <div class="bg-white rounded-2xl p-6 w-full max-w-sm fade">
+        <h3 class="font-semibold mb-4">${t('addWeight')}</h3>
+        <form onsubmit="return submitWeight(event)" class="space-y-3">
+          <input name="kg" type="number" step="0.1" placeholder="${t('weightKg')}" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" required>
+          <input name="date" type="date" value="${todayStr()}" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" required>
+          <div class="flex gap-2 pt-1"><button type="button" onclick="closeModal()" class="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-medium">${t('cancel')}</button>
+          <button class="flex-1 bg-emerald-500 text-white rounded-xl py-2.5 text-sm font-semibold">${t('save')}</button></div>
+        </form>
+      </div></div>`;
+  }
+  const d=m.data;
+  return `<div class="fixed inset-0 modal-bg flex items-center justify-center z-40 p-4" onclick="if(event.target===this) closeModal()">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-sm fade">
+      <h3 class="font-semibold mb-4">${d?t('editMeal'):t('addMeal')}</h3>
+      <form onsubmit="return submitMealForm(event)" class="space-y-3">
+        <input name="name" value="${d?esc(d.name):''}" placeholder="${t('mealName')}" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" required>
+        <select name="type" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm">${['breakfast','lunch','dinner','snack'].map(ty=>`<option value="${ty}" ${d&&d.type===ty?'selected':''}>${t(ty)}</option>`).join('')}</select>
+        <div class="grid grid-cols-2 gap-2">
+          <input name="cal" type="number" value="${d?d.cal:''}" placeholder="${t('calories')}" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm" required>
+          <input name="protein" type="number" value="${d?d.protein:''}" placeholder="${t('protein')}" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm">
+          <input name="carbs" type="number" value="${d?d.carbs:''}" placeholder="${t('carbs')}" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm">
+          <input name="fat" type="number" value="${d?d.fat:''}" placeholder="${t('fat')}" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm">
+        </div>
+        <div class="flex gap-2 pt-1"><button type="button" onclick="closeModal()" class="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-medium">${t('cancel')}</button>
+        <button class="flex-1 bg-emerald-500 text-white rounded-xl py-2.5 text-sm font-semibold">${t('save')}</button></div>
+      </form>
+    </div></div>`;
+}
+function closeModal(){ state.modal=null; render(); }
+function submitMealForm(ev){
+  ev.preventDefault(); const f=ev.target; const m=state.modal.data;
+  const payload={name:f.name.value.trim(),type:f.type.value,cal:+f.cal.value||0,protein:+f.protein.value||0,carbs:+f.carbs.value||0,fat:+f.fat.value||0};
+  if(m) updateMeal(m.id,payload); else addMeal({...payload,date:todayStr(),time:new Date().toTimeString().slice(0,5)});
+  return false;
+}
+function submitWeight(ev){ ev.preventDefault(); const f=ev.target; addWeight(f.kg.value,f.date.value); return false; }
+
+/* ---------- boot ---------- */
+async function boot(){
+  render();
+  if(CONFIGURED && sb){
+    const {data:{session}} = await sb.auth.getSession();
+    if(session && session.user){ await afterAuth(session.user); }
+    sb.auth.onAuthStateChange((event)=>{ if(event==='SIGNED_OUT'){ state.user=null; state.data=null; render(); } });
+  }
+  state.booting=false;
+  render();
+}
+boot();
+</script>
+</body>
+</html>
